@@ -1,4 +1,4 @@
-
+//* Rclcpp needed code
 #include <rclcpp/executors.hpp>
 #include <rclcpp/node.hpp>
 #include <rclcpp/publisher.hpp>
@@ -6,7 +6,6 @@
 
 //* Messages libraries
 #include "cv_bridge/cv_bridge.h"
-#include "sensor_msgs/msg/image.hpp"
 #include <sensor_msgs/msg/detail/image__struct.hpp>
 #include <sensor_msgs/image_encodings.hpp>  // Add this line!
 
@@ -19,7 +18,7 @@
 class PublishImage : public rclcpp::Node {
 private:
   static constexpr const char *NODE_NAME = "publish_image_node";
-  static constexpr const char *PUB_IMG_NAME = "image_publisher";
+  static constexpr const char *PUB_IMG_NAME = "video_publisher";
   static constexpr const int STANDARD_QOS = 10;
   static constexpr const char *VIDEO_PATH =
       "/home/joel/Documents/research/LaneAtt_rosws/src/publish_video/"
