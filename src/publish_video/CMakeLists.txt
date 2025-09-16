@@ -13,6 +13,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(OpenCV REQUIRED)
 
 if(BUILD_TESTING)
@@ -28,7 +30,7 @@ if(BUILD_TESTING)
 endif()
 
 add_executable(publish_video src/publish_video.cpp)
-ament_target_dependencies(publish_video rclcpp)
+ament_target_dependencies(publish_video rclcpp cv_bridge sensor_msgs)
 target_link_libraries (publish_video ${OpenCV_LIBRARIES})
 
 install (TARGETS
