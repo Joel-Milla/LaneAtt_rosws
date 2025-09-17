@@ -14,6 +14,7 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
+#include "geometry_msgs/msg/accel.hpp"
 
 class PublishImage : public rclcpp::Node {
 private:
