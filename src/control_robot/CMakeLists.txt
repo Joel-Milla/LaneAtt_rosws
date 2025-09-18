@@ -1,16 +1,23 @@
 cmake_minimum_required(VERSION 3.8)
-project(custom_interfaces)
+project(control_robot)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Configurations for clangd
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON) # this line is required because ROS2 always defaults to c++17. But clangd wasn't defaulting to this c++17 and was looking into older libraries and not finding some functions when importing rclcpp. This now just makes sure that c++17 is used
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(custom_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(OpenCV REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -24,9 +31,8 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Prediction.msg"
-  DEPENDENCIES geometry_msgs sensor_msgs
-)
+add_executable(control_basic src/control_basic.cpp)
+ament_target_dependencies(control_basic rclcpp custom_interfaces cv_bridge geometry_msgs sensor_msgs)
+target_link_libraries (control_basic ${OpenCV_LIBRARIES})
 
 ament_package()
