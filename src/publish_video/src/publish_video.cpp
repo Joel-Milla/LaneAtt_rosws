@@ -21,6 +21,7 @@ private:
   static constexpr const char *NODE_NAME = "publish_image_node";
   static constexpr const char *PUB_IMG_NAME = "video_publisher";
   static constexpr const int STANDARD_QOS = 10;
+  static constexpr const int FPS = 15;
   static constexpr const char *VIDEO_PATH =
       "/home/joel/Documents/research/LaneAtt_rosws/src/publish_video/"
       "video3-test.avi";
@@ -41,7 +42,7 @@ private:
     cv::VideoCapture cap;
     cv_bridge::CvImage cv_image;
     bool showWindow = false;
-    rclcpp::Rate loop_rate(15.0);
+    rclcpp::Rate loop_rate(FPS);
 
     while (true && rclcpp::ok()) {
       cap.open(video_path);

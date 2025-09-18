@@ -1,9 +1,15 @@
 //* Standard libraries
 #include <cstdint>
+#include <opencv2/core/types.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <rclcpp/logging.hpp>
+#include <sensor_msgs/msg/detail/image__struct.hpp>
 #include <utility>
 #include <vector>
 
 //* ROS2
+#include "cv_bridge/cv_bridge.h"
 #include "rclcpp/rclcpp.hpp"
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/subscription.hpp>
@@ -21,6 +27,7 @@ class BasicControl : public rclcpp::Node {
 private:
   static constexpr const char *NODE_NAME = "control_basic_node";
   static constexpr const char *PUB_CMD_VEL = "cmd_vel";
+  static constexpr const char *PUB_RESULT_IMG = "control_result";
   static constexpr const char *SUB_PREDICTION_TOPIC = "prediction";
   static constexpr const int STANDARD_QOS = 10;
 
@@ -36,14 +43,17 @@ private:
   using Twist = geometry_msgs::msg::Twist;
   using Prediction = custom_interfaces::msg::Prediction;
   using Point = geometry_msgs::msg::Point;
+  using Image = sensor_msgs::msg::Image;
 
   rclcpp::Publisher<Twist>::SharedPtr pub_cmd_vel_;
+  rclcpp::Publisher<Image>::SharedPtr pub_result_img;
   rclcpp::Subscription<Prediction>::SharedPtr sub_prediction_;
 
   boost::circular_buffer<float> left_lane_buffer_;
   boost::circular_buffer<float> right_lane_buffer_;
 
   std::vector<int> bottom_most_points_;
+  bool publish_results = false;
   bool show_results_ = false;
 
   /**
@@ -68,6 +78,33 @@ private:
     }
 
     return {x_points, y_points};
+  }
+
+  void publish_and_visualize(const Image &img, const float lane_center_x) {
+    cv_bridge::CvImagePtr cv_ptr;
+    try {
+      cv_ptr = cv_bridge::toCvCopy(img, sensor_msgs::image_encodings::BGR8);
+    } catch (cv_bridge::Exception &e) {
+      RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+      return;
+    }
+
+    int lane_center = static_cast<int>(lane_center_x);
+    //* Draw a line from top center of image, to the bottom of the image where
+    // the lane_center was calculated. Show it in red
+    cv::line(cv_ptr->image, cv::Point(lane_center, 0),
+             cv::Point(lane_center, IMAGE_HEIGHT), cv::Scalar(0, 0, 255));
+
+    //* Draw a line of the image center
+    cv::line(cv_ptr->image, cv::Point(IMAGE_CENTER, 0),
+             cv::Point(IMAGE_CENTER, IMAGE_HEIGHT - 1), cv::Scalar(0, 255, 0));
+
+    if (show_results_) {
+      cv::imshow("Lane center x Image center", cv_ptr->image);
+      cv::waitKey(1);
+    }
+
+    pub_result_img->publish(*cv_ptr->toImageMsg());
   }
 
   void prediction_subscriber(const Prediction::ConstSharedPtr &prediction_msg) {
@@ -121,6 +158,9 @@ private:
     ang_z = MAX_ANG_VEL * alpha;
     ang_z = difference >= 0 ? -1 * ang_z : ang_z;
 
+    if (publish_results)
+      publish_and_visualize(prediction_msg->frame, lane_center_x);
+
     linear_x = MAX_LIN_VEL * (1 - alpha);
     publish_vel(linear_x, ang_z);
   }
@@ -146,6 +186,7 @@ public:
 
     //* Initialize publisher and subscriber
     pub_cmd_vel_ = this->create_publisher<Twist>(PUB_CMD_VEL, STANDARD_QOS);
+    pub_result_img = this->create_publisher<Image>(PUB_RESULT_IMG, STANDARD_QOS);
     sub_prediction_ = this->create_subscription<Prediction>(
         SUB_PREDICTION_TOPIC, STANDARD_QOS,
         [this](Prediction::ConstSharedPtr prediction) {
