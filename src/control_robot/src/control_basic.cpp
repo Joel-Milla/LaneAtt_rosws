@@ -30,6 +30,8 @@ private:
   static constexpr const int IMAGE_CENTER = IMAGE_WIDTH / 2;
   static constexpr const float MAX_ANG_VEL = 1.0f;
   static constexpr const float MAX_LIN_VEL = 1.0f;
+  static constexpr const int BUFFER_CAPACITY =
+      30; //* Will hold only the 30 most relevant points
 
   using Twist = geometry_msgs::msg::Twist;
   using Prediction = custom_interfaces::msg::Prediction;
@@ -42,6 +44,7 @@ private:
   boost::circular_buffer<float> right_lane_buffer_;
 
   std::vector<int> bottom_most_points_;
+  bool show_results_ = false;
 
   /**
    * @brief Extracts from an array of Points (x,y,z) the x_points,y_points in
@@ -52,8 +55,12 @@ private:
    */
   std::pair<std::vector<float>, std::vector<float>>
   separate_points(const std::vector<Point> &points) {
-    std::vector<float> x_points(points.size());
-    std::vector<float> y_points(points.size());
+    std::vector<float> x_points;
+    std::vector<float> y_points;
+
+    //* Pre-allocate memory
+    x_points.reserve(points.size());
+    y_points.reserve(points.size());
 
     for (const Point &point : points) {
       x_points.push_back(point.x);
@@ -80,7 +87,8 @@ private:
     auto [right_c0, right_c1] =
         simple_ordinary_least_squares(right_y_points, right_x_points);
 
-    //* In each left/right buffer, save the x points of the y values at bottom_most_points_
+    //* In each left/right buffer, save the x points of the y values at
+    // bottom_most_points_
     for (const int &y : bottom_most_points_) {
       //* Get f(y) = c0 + c1 * y = x
       int left_x = static_cast<int>(left_c0 + (left_c1 * y));
@@ -93,23 +101,25 @@ private:
       right_lane_buffer_.push_back(right_x);
     }
 
-    int num_points = std::min(left_lane_buffer_.size(), right_lane_buffer_.size());
-    int average = 0;
+    //* Get the minimum safe of points to safely traverse both arrays
+    int num_points =
+        std::min(left_lane_buffer_.size(), right_lane_buffer_.size());
+    float lane_center_x = 0.0;
 
     //* Get Xp, lane point in the center of the lane
     for (int indx = 0; indx < num_points; indx++)
-      average += (right_lane_buffer_[indx] - left_lane_buffer_[indx]) / 2;
-    average /= num_points;
+      lane_center_x += (right_lane_buffer_[indx] + left_lane_buffer_[indx]) / 2;
+    lane_center_x /= num_points;
 
     //* Angular/linear velocity
     float ang_z;
     float linear_x;
 
     //* Get total difference
-    float difference = average - IMAGE_CENTER;
+    float difference = lane_center_x - IMAGE_CENTER;
     float alpha = (difference / IMAGE_CENTER) * (difference / IMAGE_CENTER);
     ang_z = MAX_ANG_VEL * alpha;
-    ang_z = -1 * ang_z ? difference >= 0 : ang_z;
+    ang_z = difference >= 0 ? -1 * ang_z : ang_z;
 
     linear_x = MAX_LIN_VEL * (1 - alpha);
     publish_vel(linear_x, ang_z);
@@ -125,8 +135,8 @@ private:
 
 public:
   explicit BasicControl() : Node(NODE_NAME) {
-    left_lane_buffer_ = boost::circular_buffer<float>(30);
-    right_lane_buffer_ = boost::circular_buffer<float>(30);
+    left_lane_buffer_ = boost::circular_buffer<float>(BUFFER_CAPACITY);
+    right_lane_buffer_ = boost::circular_buffer<float>(BUFFER_CAPACITY);
 
     //* Initialize array that takes bottom most points
     bottom_most_points_.reserve(AMOUNT_BOTTOMMOST_POINTS);
@@ -134,6 +144,7 @@ public:
          val > (IMAGE_HEIGHT - AMOUNT_BOTTOMMOST_POINTS); val--)
       bottom_most_points_.push_back(val);
 
+    //* Initialize publisher and subscriber
     pub_cmd_vel_ = this->create_publisher<Twist>(PUB_CMD_VEL, STANDARD_QOS);
     sub_prediction_ = this->create_subscription<Prediction>(
         SUB_PREDICTION_TOPIC, STANDARD_QOS,
