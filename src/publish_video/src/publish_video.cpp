@@ -19,7 +19,7 @@
 class PublishImage : public rclcpp::Node {
 private:
   static constexpr const char *NODE_NAME = "publish_image_node";
-  static constexpr const char *PUB_IMG_NAME = "video_publisher";
+  static constexpr const char *PUB_IMG_TOPIC = "video_publisher";
   static constexpr const int STANDARD_QOS = 10;
   static constexpr const int FPS = 15;
   static constexpr const char *VIDEO_PATH =
@@ -79,7 +79,7 @@ private:
 
 public:
   explicit PublishImage() : Node(NODE_NAME) {
-    img_pub_ = this->create_publisher<Image>(PUB_IMG_NAME, STANDARD_QOS);
+    img_pub_ = this->create_publisher<Image>(PUB_IMG_TOPIC, STANDARD_QOS);
     publish_video(VIDEO_PATH);
   }
 };

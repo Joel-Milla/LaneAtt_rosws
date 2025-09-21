@@ -29,12 +29,12 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-add_executable(publish_video src/publish_video.cpp)
-ament_target_dependencies(publish_video rclcpp cv_bridge sensor_msgs)
-target_link_libraries (publish_video ${OpenCV_LIBRARIES})
+add_executable(publish_video_node src/publish_video.cpp)
+ament_target_dependencies(publish_video_node rclcpp cv_bridge sensor_msgs)
+target_link_libraries (publish_video_node ${OpenCV_LIBRARIES})
 
 install (TARGETS
-        publish_video
+        publish_video_node
         DESTINATION "lib/${PROJECT_NAME}"
 )
 
