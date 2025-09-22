@@ -46,6 +46,7 @@ class ColorDetector(Node):
         self.__img_w = self.__laneatt_config['image_size']['width']
         self.__img_h = self.__laneatt_config['image_size']['height']
         self.__anchor_y_discretization = self.__laneatt_config['anchor_discretization']['y']
+        self.__positive_threshold = self.__laneatt_config['positive_threshold']
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         ## temp
@@ -69,7 +70,7 @@ class ColorDetector(Node):
             return
 
         output = self.laneatt.cv2_inference(cv_image) # Perform inference on the frame
-        # output = laneatt.nms(output) # This filter runs on the CPU and is slow, for real-time applications, it is recommended to implement it on the GPU
+        output = self.nms_v2(output)
         plotted_img = self.plot(output, cv_image) # Plot the lanes onto the frame and show it
         
         ## temp
@@ -107,6 +108,94 @@ class ColorDetector(Node):
                 prev_x, prev_y = x, y
                 
         return img
+
+    def nms_v2(self, output: torch.Tensor, nms_threshold: float = 40.0) -> torch.Tensor:
+        """
+            Apply non-maximum suppression to the proposals
+
+            Args:
+                output (torch.Tensor): Regression proposals
+                nms_threshold (float): NMS threshold
+
+            Returns:
+                torch.Tensor: Good proposals NMS suppressed
+        """
+        # Filter proposals with confidence below the threshold and sort them by confidence
+        good_proposals = output[output[:, 1] > self.__positive_threshold]
+        good_proposals = good_proposals[good_proposals[:, 3].argsort(descending=True)]
+        # Verify if there are no proposals
+        if len(good_proposals) == 0: return good_proposals
+
+        # Create a mask to store the same line proposals
+        good_proposals_mask = np.zeros((len(good_proposals), len(good_proposals)), dtype=bool)
+
+        starts = good_proposals[:, 2] / self.__img_h * self.__anchor_y_discretization
+        ends = good_proposals[:, 2] + good_proposals[:, 4]
+        # Iterate over the proposals to filter out proposals that do not overlap in the y axis
+
+        starts_a = starts.unsqueeze(1)
+        ends_a = ends.unsqueeze(1)
+        starts_b = starts.unsqueeze(0)
+        ends_b = (ends - 1).unsqueeze(0)
+
+        intersect_starts = torch.maximum(starts_a, starts_b).int()
+        intersect_ends = torch.minimum(torch.minimum(ends_a, ends_b),
+                                    torch.tensor(self.__anchor_y_discretization)).int()
+
+        valid_mask = intersect_starts < intersect_ends
+
+        valid_pairs = torch.where(valid_mask)
+        for idx in range(len(valid_pairs[0])):
+            i, j = valid_pairs[0][idx].item(), valid_pairs[1][idx].item()
+
+            start_idx = intersect_starts[i, j].item()
+            end_idx = intersect_ends[i, j].item()
+
+            if start_idx < end_idx:
+                segment_a = good_proposals[i, 5 + start_idx:end_idx]
+                segment_b = good_proposals[j, 5 + start_idx:end_idx]
+
+                error = torch.mean(torch.abs(segment_a - segment_b)).item()
+
+                good_proposals_mask[i][j] = error < nms_threshold
+
+        # List to store the indexes of the unique lines
+        unique_line_indexes = [0]
+        while True:
+            # Get a unique line
+            line = good_proposals_mask[unique_line_indexes[-1]]
+            found_different = False
+            # Iterate over a unique line against the rest of the proposals errors
+            for i, cmp_line in enumerate(line):
+                # If the line is different and the index is greater than the last unique line index we found a different line
+                # so we append it to the unique line indexes
+                if not cmp_line and i > unique_line_indexes[-1]:
+                    unique_line_indexes.append(i)
+                    found_different = True
+                    break
+
+            # If we stop finding different lines, we break the loop
+            if not found_different:
+                break
+
+        # Based on the unique line indexes, we get a range of similar lines and get the one with the highest confidence
+        # Create a list to store the high confidence unique line indexes
+        high_confidence_unique_line_indexes = [0 for _ in range(len(unique_line_indexes))]
+        # Iterate over the unique line indexes
+        for i in range(len(unique_line_indexes)):
+            # Verify if we are in the last unique line index
+            if i == len(unique_line_indexes) - 1:
+                # If so, we get the highest confidence line from the last unique line index to the end
+                high_confidence_unique_line_indexes[i] = good_proposals[unique_line_indexes[i]:][:, 1].argmax().item()
+            else:
+                # Otherwise, we get the highest confidence line from the current unique line index to the next unique line index
+                high_confidence_unique_line_indexes[i] = \
+                good_proposals[unique_line_indexes[i]:unique_line_indexes[i + 1]][:, 1].argmax().item()
+
+            # Add an offset to counteract for the list slicing
+            high_confidence_unique_line_indexes[i] += unique_line_indexes[i]
+
+        return good_proposals[unique_line_indexes]
 
 
 

@@ -23,8 +23,7 @@ private:
   static constexpr const int STANDARD_QOS = 10;
   static constexpr const int FPS = 15;
   static constexpr const char *VIDEO_PATH =
-      "/home/joel/Documents/research/LaneAtt_rosws/src/publish_video/"
-      "video3-test.avi";
+      "/home/joel/Documents/research/RealTime-LaneATT/realsense/videos/entrenamiento_extra4.avi";
 
   using Image = sensor_msgs::msg::Image;
 
