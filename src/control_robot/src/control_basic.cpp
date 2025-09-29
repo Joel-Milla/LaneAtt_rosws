@@ -1,5 +1,6 @@
 //* Standard libraries
 #include <cstdint>
+#include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
@@ -26,9 +27,9 @@ class BasicControl : public rclcpp::Node {
 
 private:
   static constexpr const char *NODE_NAME = "control_basic_node";
-  static constexpr const char *PUB_CMD_VEL = "cmd_vel";
-  static constexpr const char *PUB_RESULT_IMG = "control_result";
-  static constexpr const char *SUB_PREDICTION_TOPIC = "prediction";
+  static constexpr const char *COMMAND_VELOCITY_TOPIC = "cmd_vel";
+  static constexpr const char *LANE_DETECTION_IMG_TOPIC = "lane_detection_output";
+  static constexpr const char *PREDICTION_TOPIC_SUB = "prediction";
   static constexpr const int STANDARD_QOS = 10;
 
   static constexpr const int AMOUNT_BOTTOMMOST_POINTS = 10;
@@ -53,7 +54,7 @@ private:
   boost::circular_buffer<float> right_lane_buffer_;
 
   std::vector<int> bottom_most_points_;
-  bool publish_results = false;
+  bool publish_results = true;
   bool show_results_ = false;
 
   /**
@@ -107,10 +108,13 @@ private:
     pub_result_img->publish(*cv_ptr->toImageMsg());
   }
 
+
   void prediction_subscriber(const Prediction::ConstSharedPtr &prediction_msg) {
     const std::vector<Point> &predicted_left_lane = prediction_msg->left_lane;
     const std::vector<Point> &predicted_right_lane = prediction_msg->right_lane;
+    const Image &image = prediction_msg->frame;
 
+    return ;
     //* Saved the points predicted into the buffer
     const auto [left_x_points, left_y_points] =
         separate_points(predicted_left_lane);
@@ -159,7 +163,7 @@ private:
     ang_z = difference >= 0 ? -1 * ang_z : ang_z;
 
     if (publish_results)
-      publish_and_visualize(prediction_msg->frame, lane_center_x);
+      publish_and_visualize(image, lane_center_x);
 
     linear_x = MAX_LIN_VEL * (1 - alpha);
     publish_vel(linear_x, ang_z);
@@ -185,10 +189,10 @@ public:
       bottom_most_points_.push_back(val);
 
     //* Initialize publisher and subscriber
-    pub_cmd_vel_ = this->create_publisher<Twist>(PUB_CMD_VEL, STANDARD_QOS);
-    pub_result_img = this->create_publisher<Image>(PUB_RESULT_IMG, STANDARD_QOS);
+    pub_cmd_vel_ = this->create_publisher<Twist>(COMMAND_VELOCITY_TOPIC, STANDARD_QOS);
+    pub_result_img = this->create_publisher<Image>(LANE_DETECTION_IMG_TOPIC, STANDARD_QOS);
     sub_prediction_ = this->create_subscription<Prediction>(
-        SUB_PREDICTION_TOPIC, STANDARD_QOS,
+        PREDICTION_TOPIC_SUB, STANDARD_QOS,
         [this](Prediction::ConstSharedPtr prediction) {
           this->prediction_subscriber(prediction);
         });

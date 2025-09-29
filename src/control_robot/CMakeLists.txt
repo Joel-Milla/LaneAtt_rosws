@@ -35,4 +35,9 @@ add_executable(control_basic src/control_basic.cpp)
 ament_target_dependencies(control_basic rclcpp custom_interfaces cv_bridge geometry_msgs sensor_msgs)
 target_link_libraries (control_basic ${OpenCV_LIBRARIES})
 
+install (TARGETS
+        control_basic
+        DESTINATION "lib/${PROJECT_NAME}"
+)
+
 ament_package()

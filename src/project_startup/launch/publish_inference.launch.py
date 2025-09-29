@@ -9,7 +9,6 @@ def generate_launch_description():
     
     # Get current PYTHONPATH if it exists
     current_pythonpath = os.environ.get('PYTHONPATH', '')
-    new_pythonpath = f"{conda_env}/lib/python3.10/site-packages:{current_pythonpath}"
     
     return LaunchDescription([
         # Video publisher
@@ -22,12 +21,24 @@ def generate_launch_description():
         ),
 
         # Inference with shell wrapper to preserve environment
-        ExecuteProcess(
-            cmd=[
-                'bash', '-c',
-                f'export PYTHONPATH={conda_env}/lib/python3.10/site-packages:$PYTHONPATH && '
-                'ros2 run inference make_prediction_node'
-            ],
+        Node(
+            package='inference',
+            executable='make_prediction_node',
+            name='predicted_lanes_publisher',
             output='screen',
+            emulate_tty=True,
+            # Add conda environment to PYTHONPATH
+            additional_env={
+                'PYTHONPATH': f"{conda_env}/lib/python3.10/site-packages:{os.environ.get('PYTHONPATH', '')}"
+            }
         ),
+        
+        # Control node
+        # Node(
+        #     package='control_robot',
+        #     executable='control_basic',
+        #     name='control_basic_node',
+        #     output='screen',
+        #     emulate_tty=True,
+        # ),
     ])

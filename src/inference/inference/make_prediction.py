@@ -3,6 +3,8 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
+from custom_interfaces.msg import Prediction
+from geometry_msgs.msg import Point
 
 # Project libraries
 from laneatt import LaneATT
@@ -18,23 +20,31 @@ class ColorDetector(Node):
 
     def __init__(self) -> None:
         # Constant variables
-        NODE_NAME = "publish_image_node"
-        SUB_IMG_TOPIC = "video_publisher"
-        STANDARD_QOS = 10
+        self.NODE_NAME = "publish_image_node"
+        self.IMAGE_SUBSCRIPTION_TOPIC = "video_publisher"
+        self.PREDICTION_OUTPUT_TOPIC = "prediction_video"
+        self.LANE_DETECTION_IMG_TOPIC = 'lane_detection_output'
+        self.STANDARD_QOS = 10
+        self.publish_image = False
         
+        # Load model
         MODEL_TO_LOAD = 'laneatt_100.pt' # Model name to load
         CONFIG_TO_LOAD = 'laneatt.yaml' # Configuration file name to load
         ROOT_DIRECTORY_PATH = '/home/joel/Documents/research/LaneAtt_rosws'
         MODEL_PATH = os.path.join(ROOT_DIRECTORY_PATH, 'models', MODEL_TO_LOAD) # Model path (In this case, the model is in the same directory as the script)
         CONFIG_PATH = os.path.join(ROOT_DIRECTORY_PATH, 'models', CONFIG_TO_LOAD) # Configuration file path (In this case, the configuration file is in the same directory as the script)
         
-        super().__init__(NODE_NAME)
-        self.subscription = self.create_subscription(
+        ### Subscriptions and Publishers
+        super().__init__(self.NODE_NAME)
+        self.video_sub = self.create_subscription(
             Image,
-            SUB_IMG_TOPIC,
+            self.IMAGE_SUBSCRIPTION_TOPIC,
             self.image_callback,
-            STANDARD_QOS
+            self.STANDARD_QOS
         )
+        if self.publish_image:
+            self.show_detection_pub = self.create_publisher(Image, self.LANE_DETECTION_IMG_TOPIC, self.STANDARD_QOS)
+        self.prediction_pub = self.create_publisher(Prediction, self.PREDICTION_OUTPUT_TOPIC, self.STANDARD_QOS)
         
         self.cv_bridge = CvBridge()
         self.laneatt = LaneATT(CONFIG_PATH) # Creates the model based on a configuration file
@@ -48,9 +58,7 @@ class ColorDetector(Node):
         self.__anchor_y_discretization = self.__laneatt_config['anchor_discretization']['y']
         self.__positive_threshold = self.__laneatt_config['positive_threshold']
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        
-        ## temp
-        self.image_pub = self.create_publisher(Image, 'lane_detection_output', 10)
+
         
 
     def image_callback(self, msg: Image) -> None:
@@ -71,12 +79,77 @@ class ColorDetector(Node):
 
         output = self.laneatt.cv2_inference(cv_image) # Perform inference on the frame
         output = self.nms_v2(output)
-        plotted_img = self.plot(output, cv_image) # Plot the lanes onto the frame and show it
+        self.publish_prediction(output, cv_image)
         
-        ## temp
-        output_msg = self.cv_bridge.cv2_to_imgmsg(plotted_img, encoding="bgr8")
-        self.image_pub.publish(output_msg)
+        
+        ## Publish image
+        if self.publish_image:
+            plotted_img = self.plot(output, cv_image) # Plot the lanes onto the frame and show it
+        
+            output_msg = self.cv_bridge.cv2_to_imgmsg(plotted_img, encoding="bgr8")
+            self.show_detection_pub.publish(output_msg)
     
+    def publish_prediction(self, prediction, image) -> None:
+        lanes : list = self.obtain_lanes(prediction) # obtain all the lanes as a list after doing nsm2
+        img = cv2.resize(image, (self.__img_w, self.__img_h)) # resize image to prediction size
+        
+        if len(lanes) == 0:
+            return
+        
+        left_lanes : list = []
+        right_lanes : list = []
+        
+        image_center = self.__img_w // 2
+        
+        for lane in lanes:
+            lane_array = np.array(lane)
+            avg_x = np.mean(lane_array[:, 0])  # Average x coordinate
+            if avg_x < image_center:
+                left_lanes.append(lane)
+            else:
+                right_lanes.append(lane)
+        
+        prediction = Prediction()
+        prediction.left_lane = []
+        prediction.right_lane = []
+        prediction.frame = self.cv_bridge.cv2_to_imgmsg(img, encoding="bgr8")
+        
+        ### Save the first lane, arbitrarly even if there are more lanes
+        if left_lanes:
+            for (x, y) in left_lanes[0]:
+                point = Point()
+                point.x = float(x)
+                point.y = float(y)
+                prediction.left_lane.append(point)
+
+        if right_lanes:
+            for (x, y) in right_lanes[0]:
+                point = Point()
+                point.x = float(x)
+                point.y = float(y)
+                prediction.right_lane.append(point)
+        
+        
+        self.prediction_pub.publish(prediction)
+        
+        
+    def obtain_lanes(self, output: torch.Tensor) -> list:
+        """
+            Obtain the lane lines in a list
+        """
+
+        proposals_length = output[:, 4]
+        ys = torch.linspace(self.__img_h, 0, self.__anchor_y_discretization, device=self.device).cpu().numpy()
+
+        lanes = []
+
+        for lane_idx, lane in enumerate(output):
+            x_coords = lane[5:].cpu().detach().numpy()
+            length = int(proposals_length[lane_idx].item())
+            points = [[int(x_coords[i]), int(ys[i])] for i in range(length)]
+            lanes.append(points)
+
+        return lanes
     
     def plot(self, output:torch.Tensor, image:np.ndarray) -> None:
         """
@@ -86,23 +159,24 @@ class ColorDetector(Node):
                 output (torch.Tensor): Regression proposals
                 image (np.ndarray): Image
         """
-        proposals_length = output[:, 4]
+        proposals_length = output[:, 4] # Of all the rows, get the column index 4 (which is the 5th column)
         # Get the y discretization values
-        ys = torch.linspace(self.__img_h, 0, self.__anchor_y_discretization, device=self.device)
+        ys = torch.linspace(self.__img_h, 0, self.__anchor_y_discretization, device=self.device) # creates a range from 0 to __img_h, where you need to have '__anchor_y_discretization' total number values
+        
         # Store x and y values for each lane line
-        output = [[(x, ys[i]) for i, x in enumerate(lane[5:])] for lane in output]
+        output = [[(x, ys[indx]) for indx, x in enumerate(lane[5:])] for lane in output]
 
         # Resize the image to the model's trained size
         img = cv2.resize(image, (self.__img_w, self.__img_h))
         # Iterate over the lanes
-        for i, lane in enumerate(output):
+        for indx, lane in enumerate(output):
             # Internal loop variables to account for the first point and the change in color of the lines
             prev_x, prev_y = lane[0]
             color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             # Iterate over the line points
             for j, (x, y) in enumerate(lane):
                 # Break the loop if the proposal length is reached
-                if int(proposals_length[i].item()) == j: break
+                if int(proposals_length[indx].item()) == j: break
                 # Draw a line between the previous point and the current point
                 cv2.line(img, (int(prev_x), int(prev_y)), (int(x), int(y)), color, 2)
                 prev_x, prev_y = x, y
