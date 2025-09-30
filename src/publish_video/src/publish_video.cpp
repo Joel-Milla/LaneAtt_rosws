@@ -24,7 +24,7 @@ private:
   static constexpr const int FPS = 15;
   static constexpr const char *VIDEO_PATH =
       "/home/joel/Documents/research/RealTime-LaneATT/realsense/videos/"
-      "entrenamiento_extra4.avi";
+      "testeo_final_5.avi";
 
   using Image = sensor_msgs::msg::Image;
 

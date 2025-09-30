@@ -31,12 +31,12 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-add_executable(control_basic src/control_basic.cpp)
-ament_target_dependencies(control_basic rclcpp custom_interfaces cv_bridge geometry_msgs sensor_msgs)
-target_link_libraries (control_basic ${OpenCV_LIBRARIES})
+add_executable(control_robot_node src/control.cpp)
+ament_target_dependencies(control_robot_node rclcpp custom_interfaces cv_bridge geometry_msgs sensor_msgs)
+target_link_libraries (control_robot_node ${OpenCV_LIBRARIES})
 
 install (TARGETS
-        control_basic
+        control_robot_node
         DESTINATION "lib/${PROJECT_NAME}"
 )
 

@@ -7,9 +7,6 @@ import os
 def generate_launch_description():
     conda_env = os.path.expanduser('~/miniconda3/envs/ros_ws')
     
-    # Get current PYTHONPATH if it exists
-    current_pythonpath = os.environ.get('PYTHONPATH', '')
-    
     return LaunchDescription([
         # Video publisher
         Node(
@@ -34,11 +31,14 @@ def generate_launch_description():
         ),
         
         # Control node
-        # Node(
-        #     package='control_robot',
-        #     executable='control_basic',
-        #     name='control_basic_node',
-        #     output='screen',
-        #     emulate_tty=True,
-        # ),
+        Node(
+            package='control_robot',
+            executable='control_robot_node',
+            name='control_robot_node',
+            output='screen',
+            emulate_tty=True,
+        ),
     ])
+'''
+ros2 launch realsense2_camera rs_launch.py   rgb_camera.color_profile:='1280,720,15'
+'''
