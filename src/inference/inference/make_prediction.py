@@ -20,12 +20,11 @@ class ColorDetector(Node):
 
     def __init__(self) -> None:
         # Constant variables
-        self.NODE_NAME = "publish_image_node"
+        self.NODE_NAME = "publish_prediction_node"
         self.IMAGE_SUBSCRIPTION_TOPIC = "video_publisher"
+        # self.IMAGE_SUBSCRIPTION_TOPIC = "camera/camera/color/image_raw"
         self.PREDICTION_OUTPUT_TOPIC = "prediction_video"
-        self.LANE_DETECTION_IMG_TOPIC = 'lane_detection_output'
         self.STANDARD_QOS = 10
-        self.publish_image = False
         
         # Load model
         MODEL_TO_LOAD = 'laneatt_100.pt' # Model name to load
@@ -42,8 +41,7 @@ class ColorDetector(Node):
             self.image_callback,
             self.STANDARD_QOS
         )
-        if self.publish_image:
-            self.show_detection_pub = self.create_publisher(Image, self.LANE_DETECTION_IMG_TOPIC, self.STANDARD_QOS)
+
         self.prediction_pub = self.create_publisher(Prediction, self.PREDICTION_OUTPUT_TOPIC, self.STANDARD_QOS)
         
         self.cv_bridge = CvBridge()
@@ -80,14 +78,6 @@ class ColorDetector(Node):
         output = self.laneatt.cv2_inference(cv_image) # Perform inference on the frame
         output = self.nms_v2(output)
         self.publish_prediction(output, cv_image)
-        
-        
-        ## Publish image
-        if self.publish_image:
-            plotted_img = self.plot(output, cv_image) # Plot the lanes onto the frame and show it
-        
-            output_msg = self.cv_bridge.cv2_to_imgmsg(plotted_img, encoding="bgr8")
-            self.show_detection_pub.publish(output_msg)
     
     def publish_prediction(self, prediction, image) -> None:
         lanes : list = self.obtain_lanes(prediction) # obtain all the lanes as a list after doing nsm2

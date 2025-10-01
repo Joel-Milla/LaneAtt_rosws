@@ -37,8 +37,9 @@ def generate_launch_description():
             name='control_robot_node',
             output='screen',
             emulate_tty=True,
+            arguments=['--ros-args', '--log-level', 'control_robot_node:=DEBUG'],
         ),
     ])
-'''
-ros2 launch realsense2_camera rs_launch.py   rgb_camera.color_profile:='1280,720,15'
-'''
+    '''
+    ros2 launch realsense2_camera rs_launch.py   rgb_camera.color_profile:='1280,720,15'
+    '''

@@ -1,4 +1,5 @@
 //* Standard libraries
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <opencv2/core/mat.hpp>
@@ -41,10 +42,14 @@ private:
   static constexpr const int IMAGE_HEIGHT = 360 - 1;
   static constexpr const int IMAGE_CENTER = IMAGE_WIDTH / 2;
   static constexpr const float MAX_ANG_VEL = 1.0f;
-  static constexpr const float MAX_LIN_VEL = 0.5f;
-  static constexpr const float K_VALUE = 0.011111111f;
+  static constexpr const float MAX_LIN_VEL = 0.25f;
+  static constexpr const float K_VALUE =
+  0.011111111f; //* This is the division : 1/90
+  static constexpr const int WAITING_TIME = 3; //* If no inference for the last this seconds, then publish the previous velocity time
   static constexpr const int BUFFER_CAPACITY =
       30; //* Will hold only the 30 most relevant points
+  static constexpr const float ANG_VEL_WHILE_STATIONARY = 0.25f; //* Velocity which makes robot rotate when no prediction
+  static constexpr const int WAIT_TIME_TO_ROTATE = 3; //* Wait time to rotate to the other side
 
   static constexpr const int X = 0;
   static constexpr const int Y = 1;
@@ -59,8 +64,13 @@ private:
   rclcpp::Publisher<Image>::SharedPtr pub_result_img;
   rclcpp::Subscription<Prediction>::SharedPtr sub_prediction_;
 
-  boost::circular_buffer<float> left_lane_buffer_;
-  boost::circular_buffer<float> right_lane_buffer_;
+  //* Previous message data
+  Twist prev_vel_;
+  std::chrono::steady_clock::time_point prev_time_;
+
+  // This part is for turning left and right
+  bool turning_left = true;
+  std::chrono::steady_clock::time_point time_to_rotate_other_side_;
 
   /**
    * @brief Receives a vector of points, and returns the same values in a vector
@@ -198,8 +208,8 @@ private:
 
   /**
    * @brief Obtain the prediction message, and perform the control defined
-   * 
-   * @param prediction_msg 
+   *
+   * @param prediction_msg
    */
   void prediction_subscriber(const Prediction::ConstSharedPtr &prediction_msg) {
     const std::vector<Point> &predicted_left_lane = prediction_msg->left_lane;
@@ -210,8 +220,40 @@ private:
         obtain_lanes(predicted_left_lane, predicted_right_lane);
 
     Lane middle_lane = middle_row_between(left_lane, right_lane);
-    if (middle_lane.size() == 0)
+    if (middle_lane.size() == 0) {
+      //* Obtain difference in seconds between current time, and the previous
+      //time that previous velocity was published
+      auto current_time = std::chrono::steady_clock::now();
+      auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+          current_time - prev_time_);
+      RCLCPP_DEBUG(this->get_logger(), "Elapsed time: %ld s", elapsed.count());
+
+      //* If has elasped less than WAITING_TIME seconds, publish the previous velocity
+      if (elapsed.count() < WAITING_TIME) {
+        publish_vel(prev_vel_.linear.x, prev_vel_.angular.z);
+        RCLCPP_DEBUG(this->get_logger(), "Publishing lin_vel: %f ang_vel: %f from previous time", prev_vel_.linear.x, prev_vel_.angular.z);
+      } else {
+        //* If has elapsed more than WAITING_TIME, then robot should rotate left. If more time has passed, should start moving right
+        auto curr_time = std::chrono::steady_clock::now();
+        auto elapsed_rotating = std::chrono::duration_cast<std::chrono::seconds>(curr_time - time_to_rotate_other_side_);
+
+        // Switch direction every WAIT_TIME_TO_ROTATE seconds
+        if (elapsed_rotating.count() >= WAIT_TIME_TO_ROTATE) {
+            turning_left = !turning_left;
+            time_to_rotate_other_side_ = std::chrono::steady_clock::now();
+        }
+
+        if (turning_left) {
+            publish_vel(0.0, ANG_VEL_WHILE_STATIONARY);
+            RCLCPP_DEBUG(this->get_logger(), "No prediction, rotating left with vel: %f", ANG_VEL_WHILE_STATIONARY);
+        } else {
+          publish_vel(0.0, -1 * ANG_VEL_WHILE_STATIONARY);
+            RCLCPP_DEBUG(this->get_logger(), "No prediction, rotating right with vel: %f", ANG_VEL_WHILE_STATIONARY);
+        }
+      }
+
       return;
+    }
 
     middle_lane.resize(
         std::min(middle_lane.size(),
@@ -250,10 +292,11 @@ private:
   }
 
   /**
-   * @brief Function solely to recieve linear and angular velocity, and publish ti
-   * 
-   * @param linear_x 
-   * @param ang_z 
+   * @brief Function solely to recieve linear and angular velocity, and publish
+   * ti
+   *
+   * @param linear_x
+   * @param ang_z
    */
   void publish_vel(float linear_x, float ang_z) {
     Twist msg;
@@ -261,12 +304,16 @@ private:
     msg.angular.set__z(ang_z);
 
     pub_cmd_vel_->publish(msg);
+
+    //* Save the current velocity and time
+    prev_vel_ = msg;
+    prev_time_ = std::chrono::steady_clock::now();
   }
 
 public:
   explicit BasicControl() : Node(NODE_NAME) {
-    left_lane_buffer_ = boost::circular_buffer<float>(BUFFER_CAPACITY);
-    right_lane_buffer_ = boost::circular_buffer<float>(BUFFER_CAPACITY);
+    prev_time_ = std::chrono::steady_clock::now();
+    time_to_rotate_other_side_ = std::chrono::steady_clock::now();
 
     //* Initialize publisher and subscriber
     pub_cmd_vel_ =
