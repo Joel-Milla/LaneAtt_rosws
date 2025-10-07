@@ -299,15 +299,15 @@ private:
    * @param ang_z
    */
   void publish_vel(float linear_x, float ang_z) {
-    Twist msg;
-    msg.linear.set__x(linear_x);
-    msg.angular.set__z(ang_z);
+    // Twist msg;
+    // msg.linear.set__x(linear_x);
+    // msg.angular.set__z(ang_z);
 
-    pub_cmd_vel_->publish(msg);
+    // pub_cmd_vel_->publish(msg);
 
     //* Save the current velocity and time
-    prev_vel_ = msg;
-    prev_time_ = std::chrono::steady_clock::now();
+    // prev_vel_ = msg;
+    // prev_time_ = std::chrono::steady_clock::now();
   }
 
 public:

@@ -21,18 +21,19 @@ class PyControl(Node):
         self.current_time = 0.0
         self.last_time = 0.0
 
-        self.pred_subscribe = self.create_subscription(Prediction, 'prediction_video', self.pred_cb)
+        self.pred_subscribe = self.create_subscription(Prediction, 'prediction_video', self.pred_cb, 10)
 
-        self.im_pub = self.create_publisher(Image, 'prediction_video', 10)
-        self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
+        # self.im_pub = self.create_publisher(Image, 'prediction_video', 10)
+        # self.vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
+        self.vel_pub = self.create_publisher(Twist, '/j100_0395/cmd_vel', 10)
 
         timer_period = 0.1
         self.timer = self.create_timer(timer_period, self.timer_cb)
 
     def pred_cb(self, msg):
         self.pred = msg
-        self.left_lane = self.pred.left_line
-        self.right_lane = self.pred.right_line
+        self.left_lane = self.pred.left_lane
+        self.right_lane = self.pred.right_lane
         self.image = self.pred.frame
 
     def timer_cb(self):
@@ -44,7 +45,7 @@ class PyControl(Node):
         
         if len(middle_line) == 0:
             self.current_time = self.get_clock().now().nanoseconds / 1e9
-            if self.current_time - self.last_time > 2.0:
+            if self.current_time - self.last_time > 10.0:
                 self.vel.linear.x = 0.0
                 self.vel.angular.z = 0.0
 
@@ -60,8 +61,8 @@ class PyControl(Node):
             angle = np.arctan2(dy, dx)
             w_error = angle - np.pi / 2 # Between -pi/2 and pi/2
 
-            if abs(w_error) > np.deg2rad(20):
-                Kp = 0.2    
+            if abs(w_error) > np.deg2rad(5):
+                Kp = 0.8
                 Kw = 1.0
 
                 self.vel.linear.x = (len(middle_line) / 7.0) * Kp 
@@ -72,8 +73,11 @@ class PyControl(Node):
                 self.last_time = self.get_clock().now().nanoseconds / 1e9
 
             else:
-                self.vel.linear.x = 0.5
-                self.vel.angular.z = 0.0
+                Kp = 1.0
+                Kw = 0.8
+
+                self.vel.linear.x = (len(middle_line) / 7.0) * Kp 
+                self.vel.angular.z = w_error * Kw
 
                 self.vel_pub.publish(self.vel)
                 self.get_logger().info(f'Linear Velocity: {self.vel.linear.x:.2f} Angular Velocity: {self.vel.angular.z:.2f}')

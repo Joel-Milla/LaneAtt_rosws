@@ -21,8 +21,8 @@ class ColorDetector(Node):
     def __init__(self) -> None:
         # Constant variables
         self.NODE_NAME = "publish_prediction_node"
-        self.IMAGE_SUBSCRIPTION_TOPIC = "video_publisher"
-        # self.IMAGE_SUBSCRIPTION_TOPIC = "camera/camera/color/image_raw"
+        # self.IMAGE_SUBSCRIPTION_TOPIC = "video_publisher"
+        self.IMAGE_SUBSCRIPTION_TOPIC = "camera/camera/color/image_raw"
         self.PREDICTION_OUTPUT_TOPIC = "prediction_video"
         self.STANDARD_QOS = 10
         
@@ -83,8 +83,8 @@ class ColorDetector(Node):
         lanes : list = self.obtain_lanes(prediction) # obtain all the lanes as a list after doing nsm2
         img = cv2.resize(image, (self.__img_w, self.__img_h)) # resize image to prediction size
         
-        if len(lanes) == 0:
-            return
+        # if len(lanes) == 0:
+        #     return
         
         left_lanes : list = []
         right_lanes : list = []

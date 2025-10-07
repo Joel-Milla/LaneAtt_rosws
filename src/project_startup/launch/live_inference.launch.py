@@ -37,8 +37,13 @@ def generate_launch_description():
                 'PYTHONPATH': f"{conda_env}/lib/python3.10/site-packages:{os.environ.get('PYTHONPATH', '')}"
             }
         ),
-        
-        # Control node
+        Node(
+            package='pycontrol',
+            executable='control',
+            output='screen',
+            emulate_tty=True,
+        ),
+        # Debug node
         Node(
             package='control_robot',
             executable='control_robot_node',
