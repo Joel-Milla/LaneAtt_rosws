@@ -43,6 +43,8 @@ class PyControl(Node):
         middle_line = np.array(self.middle_row)
         middle_line = middle_line[:min(len(middle_line), 7)]
         
+        self.get_logger().debug(f'len: {len(middle_line)}')
+
         if len(middle_line) == 0:
             self.current_time = self.get_clock().now().nanoseconds / 1e9
             if self.current_time - self.last_time > 10.0:
@@ -110,7 +112,7 @@ class PyControl(Node):
         
         while indx_l < len(self.left_line) and indx_r < len(self.right_line):
             # If the y-coordinates match, get middle row
-            if self.left_line[indx_l][1] == self.right_line[indx_r][1]:  # Y coordinate
+            if abs(self.left_line[indx_l][1] - self.right_line[indx_r][1]) < 5:
                 middle_x = (self.left_line[indx_l][0] + self.right_line[indx_r][0]) // 2  # X coordinate
                 self.middle_row.append((middle_x, self.left_line[indx_l][1]))
                 indx_l += 1
@@ -121,7 +123,8 @@ class PyControl(Node):
                     indx_l += 1  # Advance l because list is in descending order
                 else:
                     indx_r += 1
-        
+
+
 def main(args=None):
     rclpy.init(args=args)
     pycon = PyControl()
