@@ -30,6 +30,14 @@ def generate_launch_description():
             }
         ),
         
+        Node(
+            package='pycontrol',
+            executable='control',
+            output='screen',
+            emulate_tty=True,
+        ),
+
+        # Comment to use cpp
         # Control node
         Node(
             package='control_robot',
