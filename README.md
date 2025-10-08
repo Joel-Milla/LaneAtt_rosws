@@ -1,5 +1,7 @@
 # RealTime-LaneATT Row Detection and Navigation
 
+> A ROS2-based real-time lane detection and navigation system for greenhouse robots, powered by LaneATT.
+
 ![model flow chart](assets/model.png)
 
 A Real Time approach to Lane Detection for greenhouse environments based on the paper "Keep your attention on the lane" by Lucas Tabelini, Rodrigo Berriel, Thiago M. Paixao, Claudine Badue, Alberto F. De Souza, Thiago Oliveira-Santos.
@@ -10,9 +12,9 @@ A Real Time approach to Lane Detection for greenhouse environments based on the 
 
 * [Introduction](#introduction)
 * [Key Features](#key-features)
+* [Requirements](#requirements)
 * [Model Architecture](#model-architecture)
-* [Training and Evaluation](#training-and-evaluation)
-* [Metrics](#metrics)
+* [Evaluation of Model](#evaluation-of-model)
 * [Code and Usage](#code-and-usage)
 * [Citation](#citation)
 
@@ -48,7 +50,10 @@ To know more about the model architecture, please refer to our previous work: [R
 **Code and Usage**
 -----------------
 
-* This repository contains the ROS2 packages for the `Realtime-LaneATT` model and its navigation capabilities. The installation method of the model is through the `pip` package manager. To see the source code of the model, please visit our repository: [RealTime-LaneATT](https://github.com/PaoloReyes/RealTime-LaneATT)
+* This repository provides the ROS2 integration of the **Realtime-LaneATT** model.  
+* The base model can be installed via `pip`, while this workspace provides ROS2 launch and control packages for real-time navigation.
+
+* To see the source code of the model, please visit our repository: [RealTime-LaneATT](https://github.com/PaoloReyes/RealTime-LaneATT)
 
 
 
@@ -89,7 +94,7 @@ You should see a graph like this:
 
 ![rqt_graph](assets/nodes_graph.png)
 
-## Evaluation of the model
+## Evaluation of Model
 
 To evaluate how the model works in the navigation, you would need an ArUco Marker to set as reference. With preference, use the **4x4** dictionary and the id 43. You can create your own ArUco Marker using the following link: [ArUco Marker Generator](https://chev.me/arucogen/)
 
