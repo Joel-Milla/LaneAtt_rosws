@@ -65,7 +65,7 @@ class PyControl(Node):
 
             if abs(w_error) > np.deg2rad(5):
                 Kp = 0.8
-                Kw = 1.0
+                Kw = 0.6
 
                 self.vel.linear.x = (len(middle_line) / 7.0) * Kp 
                 self.vel.angular.z = w_error * Kw
@@ -76,7 +76,7 @@ class PyControl(Node):
 
             else:
                 Kp = 1.0
-                Kw = 0.8
+                Kw = 0.3
 
                 self.vel.linear.x = (len(middle_line) / 7.0) * Kp 
                 self.vel.angular.z = w_error * Kw
@@ -110,9 +110,21 @@ class PyControl(Node):
         indx_r = 0
         self.middle_row = []
         
+        if len(self.left_line) > 3:
+            self.get_logger().info(f"Left line: [({self.left_line[0][0]},{self.left_line[0][1]}),({self.left_line[1][0]},{self.left_line[1][1]}),({self.left_line[2][0]},{self.left_line[2][1]})...({self.left_line[-1][0]},{self.left_line[-1][1]})]")
+        else:
+            self.get_logger().info(f"Left line: {self.left_line}")
+
+        # Print right line
+        if len(self.right_line) > 3:
+            self.get_logger().info(f"Right line: [({self.right_line[0][0]},{self.right_line[0][1]}),({self.right_line[1][0]},{self.right_line[1][1]}),({self.right_line[2][0]},{self.right_line[2][1]})...({self.right_line[-1][0]},{self.right_line[-1][1]})]")
+        else:
+            self.get_logger().info(f"Right line: {self.right_line}")
+
+        
         while indx_l < len(self.left_line) and indx_r < len(self.right_line):
             # If the y-coordinates match, get middle row
-            if abs(self.left_line[indx_l][1] - self.right_line[indx_r][1]) < 5:
+            if abs(self.left_line[indx_l][1] - self.right_line[indx_r][1]) < 20:
                 middle_x = (self.left_line[indx_l][0] + self.right_line[indx_r][0]) // 2  # X coordinate
                 self.middle_row.append((middle_x, self.left_line[indx_l][1]))
                 indx_l += 1
