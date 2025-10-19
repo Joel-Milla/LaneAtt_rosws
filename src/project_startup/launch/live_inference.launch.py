@@ -44,11 +44,11 @@ def generate_launch_description():
             emulate_tty=True,
         ),
         # Debug node
-        Node(
-            package='control_robot',
-            executable='control_robot_node',
-            name='control_robot_node',
-            output='screen',
-            emulate_tty=True,
-        ),
+        # Node(
+        #     package='control_robot',
+        #     executable='control_robot_node',
+        #     name='control_robot_node',
+        #     output='screen',
+        #     emulate_tty=True,
+        # ),
     ])
