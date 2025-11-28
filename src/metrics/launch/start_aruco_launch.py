@@ -118,7 +118,7 @@ def generate_launch_description():
     ld = LaunchDescription([launch_rqt_arg,
                             launch_real_arg,
                             camera_node,
-                            # camera_launch_real,
+                            camera_launch_real,
                             aruco_opencv,
                             aruco_distance,
                             aruco_distance_realsense,

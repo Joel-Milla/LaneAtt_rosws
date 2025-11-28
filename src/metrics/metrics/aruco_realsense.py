@@ -20,7 +20,7 @@ class MarkerTfListener(Node):
 
     def timer_cb(self):
         parent_frame = 'marker_43'
-        child_frame = 'map'
+        child_frame = 'camera_link'
         try:
             self.transformation = self.tf_buffer.lookup_transform(
                 parent_frame,

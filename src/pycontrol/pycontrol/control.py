@@ -169,11 +169,11 @@ class PyControl(Node):
 
                 self.vel_pub.publish(self.vel)
                 # debug
-                # self.publish_and_visualize(self.image, [], [], [], 0, 0, 0, 0, self.vel.linear.x, self.vel.angular.z, True)
+                self.publish_and_visualize(self.image, [], [], [], 0, 0, 0, 0, self.vel.linear.x, self.vel.angular.z, True)
             else:
                 self.vel_pub.publish(self.vel)
                 # debug
-                # self.publish_and_visualize(self.image, middle_line, [], [], 0, 0, 0, 0, self.vel.linear.x, self.vel.angular.z, True)
+                self.publish_and_visualize(self.image, middle_line, [], [], 0, 0, 0, 0, self.vel.linear.x, self.vel.angular.z, True)
         
         else:
             average = middle_line[:, 0].mean() if len(middle_line) > 0 else 0
@@ -194,7 +194,7 @@ class PyControl(Node):
                 self.get_logger().info(f'Linear Velocity: {self.vel.linear.x:.2f} Angular Velocity: {self.vel.angular.z:.2f}')
                 self.last_time = self.get_clock().now().nanoseconds / 1e9
                 # debug
-                # self.publish_and_visualize(self.image, self.left_line, self.right_line, middle_line, average, w_error, dx, dy, self.vel.linear.x, self.vel.angular.z)
+                self.publish_and_visualize(self.image, self.left_line, self.right_line, middle_line, average, w_error, dx, dy, self.vel.linear.x, self.vel.angular.z)
 
             else:
                 Kp = 0.5
@@ -207,7 +207,7 @@ class PyControl(Node):
                 self.get_logger().info(f'Linear Velocity: {self.vel.linear.x:.2f} Angular Velocity: {self.vel.angular.z:.2f}')
                 self.last_time = self.get_clock().now().nanoseconds / 1e9
                 # debug
-                # self.publish_and_visualize(self.image, self.left_line, self.right_line, middle_line, average, w_error, dx, dy, self.vel.linear.x, self.vel.angular.z)
+                self.publish_and_visualize(self.image, self.left_line, self.right_line, middle_line, average, w_error, dx, dy, self.vel.linear.x, self.vel.angular.z)
                 
     def convert_line(self):
 
