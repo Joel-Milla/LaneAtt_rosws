@@ -2,9 +2,7 @@
 
 > A ROS2-based real-time lane detection and navigation system for greenhouse robots, powered by LaneATT.
 
-![model flow chart](assets/model.png)
-
-A Real Time approach to Lane Detection for greenhouse environments based on the paper "Keep your attention on the lane" by Lucas Tabelini, Rodrigo Berriel, Thiago M. Paixao, Claudine Badue, Alberto F. De Souza, Thiago Oliveira-Santos.
+A Real Time approach to Lane Detection for greenhouse environments based on the paper "Keep your attention on the lane" by Lucas Tabelini, Rodrigo Berriel, Thiago M. Paixao, Claudine Badue, Alberto F. De Souza, Thiago Oliveira-Santos. For the core LaneATT model implementation, see the [main repository](https://github.com/Joel-Milla/RealTime-LaneATT).
 
 ---------------
 
@@ -50,10 +48,17 @@ To know more about the model architecture, please refer to our previous work: [R
 **Code and Usage**
 -----------------
 
-* This repository provides the ROS2 integration of the **Realtime-LaneATT** model.  
-* The base model can be installed via `pip`, while this workspace provides ROS2 launch and control packages for real-time navigation.
+This repository provides ROS2 integration and autonomous navigation implementation of the **Realtime-LaneATT** model for the Jackal platform in greenhouse environments. It integrates the LaneATT model for real-time lane detection and uses it to autonomously navigate the robot through greenhouse rows.
 
-* To see the source code of the model, please visit our repository: [RealTime-LaneATT](https://github.com/PaoloReyes/RealTime-LaneATT)
+**Repository Structure:**
+
+* **@src/control_robot/** - C++ control nodes responsible for controlling the Jackal robot based on lane predictions
+* **@src/custom_interfaces/** - Custom message definitions used to pass lane predictions from the inference node to the control nodes
+* **@src/inference/** - Python node that performs real-time inference on images from the Realsense camera
+* **@src/metrics/** - Node for measuring and recording robot displacement while navigating through greenhouse lanes
+* **@src/project_startup/** - Launch files that coordinate and start all robot nodes in the correct sequence
+* **@src/publish_video/** - Node that publishes video streams for testing command flow and inference from pre-recorded video instead of live Realsense feed
+* **@src/pycontrol/** - Alternative Python-based control implementation for the robot
 
 
 
